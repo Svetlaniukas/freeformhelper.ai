@@ -13,10 +13,13 @@ export async function POST(req) {
     let text = '';
 
     if (file.type === 'application/pdf') {
-      // ИСПРАВЛЕНИЕ: Динамический импорт, чтобы сборка не падала
-      const pdfParse = require('pdf-parse');
-      const data = await pdfParse(buffer);
-      text = data.text;
+      try {
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(buffer);
+        text = data.text;
+      } catch (e) {
+        return NextResponse.json({ error: 'PDF Error' }, { status: 500 });
+      }
     } else if (file.name.endsWith('.docx')) {
       const result = await mammoth.extractRawText({ buffer });
       text = result.value;

@@ -1,3 +1,50 @@
+#!/bin/bash
+
+echo "💎 ВОЗВРАЩАЕМ МАРКЕТИНГ, PDF И СОЦИАЛЬНОЕ ДОКАЗАТЕЛЬСТВО..."
+
+# 1. Устанавливаем библиотеки для анимаций (если пропали)
+npm install framer-motion lucide-react
+
+# 2. ЧИНИМ API PARSE (PDF)
+# Используем безопасный метод require, чтобы Render не ругался
+cat > src/app/api/parse/route.js << 'EOL'
+import { NextResponse } from 'next/server';
+import mammoth from 'mammoth';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(req) {
+  try {
+    const formData = await req.formData();
+    const file = formData.get('file');
+    if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    let text = '';
+
+    if (file.type === 'application/pdf') {
+      try {
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(buffer);
+        text = data.text;
+      } catch (e) {
+        return NextResponse.json({ error: 'PDF Error' }, { status: 500 });
+      }
+    } else if (file.name.endsWith('.docx')) {
+      const result = await mammoth.extractRawText({ buffer });
+      text = result.value;
+    } else {
+      text = buffer.toString('utf-8');
+    }
+    return NextResponse.json({ text });
+  } catch (error) {
+    return NextResponse.json({ error: 'Parsing failed' }, { status: 500 });
+  }
+}
+EOL
+
+# 3. ГЛАВНАЯ СТРАНИЦА (ВСЁ ВКЛЮЧЕНО: СЧЕТЧИКИ, SEO, ОПИСАНИЕ)
+cat > src/app/page.js << 'EOL'
 "use client";
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -242,3 +289,13 @@ export default function Home() {
     </Suspense>
   );
 }
+EOL
+
+echo "✅ ПОЛНЫЙ ПАКЕТ УСТАНОВЛЕН!"
+echo "Отправляем на GitHub..."
+
+git add .
+git commit -m "Polish: Add Social Proof, SEO text, and Fix PDF"
+git push -u origin main --force
+
+echo "🚀 Улетело! Проверяй Render через 2 минуты."
