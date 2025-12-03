@@ -5,10 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyBtn = document.getElementById('copyBtn');
   const resultArea = document.getElementById('resultArea');
 
-  // ВАШ URL НА RENDER (Заменится автоматически если скрипт запущен верно, но лучше проверь)
+  // URL ТВОЕГО САЙТА (Автоматически берем с Render, если что поправь вручную)
   const API_URL = "https://freeformhelper-ai.onrender.com/api/humanize";
 
-  // 1. Авто-захват текста при открытии
   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     chrome.scripting.executeScript({
       target: {tabId: tabs[0].id},
@@ -20,13 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 2. Отправка на сервер
   humanizeBtn.addEventListener('click', async () => {
     const text = input.value;
     if(!text) return;
 
     humanizeBtn.disabled = true;
-    humanizeBtn.innerText = "REWRITING PATTERNS...";
+    humanizeBtn.innerText = "WORKING..."; // Простой текст при загрузке
 
     try {
       const res = await fetch(API_URL, {
@@ -40,26 +38,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if(data.result) {
         output.value = data.result;
         resultArea.style.display = 'block';
-        humanizeBtn.innerText = "DONE ✅";
+        humanizeBtn.innerText = "DONE"; // Простой текст в конце
       } else {
         output.value = "Error: " + JSON.stringify(data);
         resultArea.style.display = 'block';
       }
     } catch (err) {
-      alert("Network Error. Ensure your Render site is live.");
-      output.value = "Connection failed. Check internet.";
+      output.value = "Connection failed. Check internet or Render site.";
       resultArea.style.display = 'block';
     } finally {
       humanizeBtn.disabled = false;
-      if(humanizeBtn.innerText !== "DONE ✅") humanizeBtn.innerText = "HUMANIZE SELECTION ⚡";
+      if(humanizeBtn.innerText !== "DONE") humanizeBtn.innerText = "HUMANIZE SELECTION";
     }
   });
 
-  // 3. Копирование
   copyBtn.addEventListener('click', () => {
     output.select();
     document.execCommand('copy');
-    copyBtn.innerText = "COPIED!";
+    copyBtn.innerText = "COPIED";
     setTimeout(() => copyBtn.innerText = "COPY TO CLIPBOARD", 2000);
   });
 });
