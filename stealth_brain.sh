@@ -1,3 +1,8 @@
+#!/bin/bash
+
+echo "🧠 ОБНОВЛЯЕМ МОЗГ ИИ (MAX STEALTH MODE)..."
+
+cat > src/app/api/humanize/route.js << 'EOL'
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
@@ -42,3 +47,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }
+EOL
+
+echo "✅ ЯДЕРНЫЙ ПРОМПТ ЗАГРУЖЕН!"
+echo "Отправляем на GitHub..."
+
+git add .
+git commit -m "Update AI Logic: Max Stealth Mode"
+git push -u origin main --force
