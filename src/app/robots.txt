@@ -1,0 +1,4 @@
+export default function robots() {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://essay.codesaas.ie'; 
+  return { rules: { userAgent: '*', allow: '/', disallow: '/api/' }, sitemap: `${baseUrl}/sitemap.xml` }
+}
