@@ -1,7 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Ghostwriter AI",
+  "name": "FreeForm Helper - AI Humanizer",
   "version": "1.0",
-  "permissions": ["activeTab", "scripting"],
-  "action": { "default_popup": "popup.html" }
+  "description": "Select any text and humanize it instantly.",
+  "permissions": ["activeTab", "scripting", "contextMenus"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icon.png", "48": "icon.png" }
+  },
+  "icons": { "16": "icon.png", "48": "icon.png" }
 }

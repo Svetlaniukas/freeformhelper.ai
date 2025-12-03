@@ -1,3 +1,12 @@
+#!/bin/bash
+
+echo "🧩 СОЗДАЕМ УМНОЕ РАСШИРЕНИЕ И ЧЕСТНЫЙ СКАНЕР..."
+
+# ==========================================
+# 1. ОБНОВЛЯЕМ PAGE.JS (САЙТ)
+# Добавляем: Проверку на 100 слов + Умные статусы сканирования
+# ==========================================
+cat > src/app/page.js << 'EOL'
 "use client";
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -190,3 +199,99 @@ export default function Home() {
     </Suspense>
   );
 }
+EOL
+
+# ==========================================
+# 2. СОЗДАЕМ CHROME EXTENSION (папка /extension)
+# Это расширение умеет читать выделенный текст с ЛЮБОГО сайта.
+# ==========================================
+mkdir -p extension
+
+# Manifest V3
+cat > extension/manifest.json << 'EOL'
+{
+  "manifest_version": 3,
+  "name": "FreeForm Helper - AI Humanizer",
+  "version": "1.0",
+  "description": "Select any text and humanize it instantly.",
+  "permissions": ["activeTab", "scripting", "contextMenus"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icon.png", "48": "icon.png" }
+  },
+  "icons": { "16": "icon.png", "48": "icon.png" }
+}
+EOL
+
+# Popup HTML (Интерфейс расширения)
+cat > extension/popup.html << 'EOL'
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 320px; background: #020617; color: white; font-family: sans-serif; padding: 15px; }
+    h1 { font-size: 16px; margin-bottom: 10px; color: #38bdf8; font-weight: 900; }
+    textarea { width: 100%; height: 100px; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px; padding: 8px; box-sizing: border-box; resize: none; font-size: 12px; }
+    button { width: 100%; background: linear-gradient(to right, #2563eb, #06b6d4); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:hover { opacity: 0.9; }
+    .footer { margin-top: 10px; font-size: 10px; text-align: center; color: #64748b; }
+    a { color: #38bdf8; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>FreeForm Helper 👻</h1>
+  <textarea id="textInput" placeholder="Select text on page or paste here..."></textarea>
+  <button id="actionBtn">Go to Web App ⚡</button>
+  <div class="footer">
+    <a href="https://freeformhelper-ai.onrender.com" target="_blank">Open Full Version</a>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
+EOL
+
+# Popup JS (Логика)
+cat > extension/popup.js << 'EOL'
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('textInput');
+  const btn = document.getElementById('actionBtn');
+
+  // 1. Пытаемся взять выделенный текст со страницы
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    chrome.scripting.executeScript({
+      target: {tabId: tabs[0].id},
+      func: () => window.getSelection().toString()
+    }, (results) => {
+      if (results && results[0] && results[0].result) {
+        input.value = results[0].result;
+      }
+    });
+  });
+
+  // 2. При нажатии кнопки - копируем текст и открываем сайт
+  btn.addEventListener('click', () => {
+    const text = input.value;
+    if(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        // Открываем сайт. Пользователь просто нажмет Ctrl+V
+        chrome.tabs.create({ url: "https://freeformhelper-ai.onrender.com" });
+      });
+    } else {
+      chrome.tabs.create({ url: "https://freeformhelper-ai.onrender.com" });
+    }
+  });
+});
+EOL
+
+# Пустая иконка (чтобы не ругался)
+touch extension/icon.png
+
+echo "✅ РАСШИРЕНИЕ И СКАНЕР ОБНОВЛЕНЫ!"
+echo "Отправляем на GitHub..."
+
+git add .
+git commit -m "Upgrade: Smart Scanner and Extension"
+git push -u origin main --force
+
+echo "🚀 ГОТОВО! Сайт обновится через 2 минуты."
+echo "👉 Папка 'extension' готова для загрузки в Chrome."
