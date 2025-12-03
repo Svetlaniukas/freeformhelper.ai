@@ -1,8 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const input = document.getElementById('textInput');
-  const btn = document.getElementById('actionBtn');
+  const input = document.getElementById('input');
+  const output = document.getElementById('output');
+  const humanizeBtn = document.getElementById('humanizeBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const resultArea = document.getElementById('resultArea');
 
-  // 1. Пытаемся взять выделенный текст со страницы
+  // ВАШ URL НА RENDER (Заменится автоматически если скрипт запущен верно, но лучше проверь)
+  const API_URL = "https://freeformhelper-ai.onrender.com/api/humanize";
+
+  // 1. Авто-захват текста при открытии
   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     chrome.scripting.executeScript({
       target: {tabId: tabs[0].id},
@@ -14,16 +20,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 2. При нажатии кнопки - копируем текст и открываем сайт
-  btn.addEventListener('click', () => {
+  // 2. Отправка на сервер
+  humanizeBtn.addEventListener('click', async () => {
     const text = input.value;
-    if(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        // Открываем сайт. Пользователь просто нажмет Ctrl+V
-        chrome.tabs.create({ url: "https://freeformhelper-ai.onrender.com" });
+    if(!text) return;
+
+    humanizeBtn.disabled = true;
+    humanizeBtn.innerText = "REWRITING PATTERNS...";
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text })
       });
-    } else {
-      chrome.tabs.create({ url: "https://freeformhelper-ai.onrender.com" });
+
+      const data = await res.json();
+      
+      if(data.result) {
+        output.value = data.result;
+        resultArea.style.display = 'block';
+        humanizeBtn.innerText = "DONE ✅";
+      } else {
+        output.value = "Error: " + JSON.stringify(data);
+        resultArea.style.display = 'block';
+      }
+    } catch (err) {
+      alert("Network Error. Ensure your Render site is live.");
+      output.value = "Connection failed. Check internet.";
+      resultArea.style.display = 'block';
+    } finally {
+      humanizeBtn.disabled = false;
+      if(humanizeBtn.innerText !== "DONE ✅") humanizeBtn.innerText = "HUMANIZE SELECTION ⚡";
     }
+  });
+
+  // 3. Копирование
+  copyBtn.addEventListener('click', () => {
+    output.select();
+    document.execCommand('copy');
+    copyBtn.innerText = "COPIED!";
+    setTimeout(() => copyBtn.innerText = "COPY TO CLIPBOARD", 2000);
   });
 });

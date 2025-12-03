@@ -2,22 +2,48 @@
 <html>
 <head>
   <style>
-    body { width: 320px; background: #020617; color: white; font-family: sans-serif; padding: 15px; }
-    h1 { font-size: 16px; margin-bottom: 10px; color: #38bdf8; font-weight: 900; }
-    textarea { width: 100%; height: 100px; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px; padding: 8px; box-sizing: border-box; resize: none; font-size: 12px; }
-    button { width: 100%; background: linear-gradient(to right, #2563eb, #06b6d4); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    button:hover { opacity: 0.9; }
-    .footer { margin-top: 10px; font-size: 10px; text-align: center; color: #64748b; }
+    body { width: 340px; background: #020617; color: white; font-family: sans-serif; padding: 16px; margin: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .logo { font-weight: 900; font-size: 16px; background: linear-gradient(to right, #60a5fa, #22d3ee); -webkit-background-clip: text; color: transparent; }
+    .status { font-size: 10px; font-weight: bold; color: #4ade80; border: 1px solid #4ade80; padding: 2px 6px; border-radius: 4px; }
+    
+    label { font-size: 10px; color: #94a3b8; font-weight: bold; display: block; margin-bottom: 5px; }
+    textarea { width: 100%; height: 100px; background: #0f172a; border: 1px solid #1e293b; color: #e2e8f0; border-radius: 8px; padding: 10px; box-sizing: border-box; resize: none; font-family: monospace; font-size: 11px; outline: none; }
+    textarea:focus { border-color: #38bdf8; }
+    
+    button { width: 100%; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 12px; transition: 0.2s; font-size: 12px; }
+    .btn-primary { background: white; color: black; }
+    .btn-primary:hover { transform: scale(1.02); }
+    .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+    
+    .btn-secondary { background: #1e293b; color: #94a3b8; margin-top: 8px; border: 1px solid #334155; }
+    .btn-secondary:hover { color: white; border-color: #64748b; }
+
+    .result-area { display: none; margin-top: 15px; border-top: 1px solid #1e293b; padding-top: 15px; }
+    .paywall-hint { font-size: 10px; color: #64748b; text-align: center; margin-top: 10px; }
     a { color: #38bdf8; text-decoration: none; }
   </style>
 </head>
 <body>
-  <h1>FreeForm Helper 👻</h1>
-  <textarea id="textInput" placeholder="Select text on page or paste here..."></textarea>
-  <button id="actionBtn">Go to Web App ⚡</button>
-  <div class="footer">
-    <a href="https://freeformhelper-ai.onrender.com" target="_blank">Open Full Version</a>
+  <div class="header">
+    <div class="logo">FreeFormHelper</div>
+    <div class="status">READY</div>
   </div>
+
+  <label>SELECTED TEXT</label>
+  <textarea id="input" placeholder="Select text on page..."></textarea>
+  
+  <button id="humanizeBtn" class="btn-primary">HUMANIZE SELECTION ⚡</button>
+
+  <div class="result-area" id="resultArea">
+    <label style="color:#4ade80;">HUMANIZED RESULT</label>
+    <textarea id="output" readonly></textarea>
+    <button id="copyBtn" class="btn-secondary">COPY TO CLIPBOARD</button>
+    <div class="paywall-hint">
+      To bypass limits, <a href="https://freeformhelper-ai.onrender.com" target="_blank">Open Web App</a>
+    </div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
