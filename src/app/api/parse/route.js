@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
@@ -12,7 +13,9 @@ export async function POST(req) {
     let text = '';
 
     if (file.type === 'application/pdf') {
-      const data = await pdf(buffer);
+      // ИСПРАВЛЕНИЕ: Динамический импорт, чтобы сборка не падала
+      const pdfParse = require('pdf-parse');
+      const data = await pdfParse(buffer);
       text = data.text;
     } else if (file.name.endsWith('.docx')) {
       const result = await mammoth.extractRawText({ buffer });

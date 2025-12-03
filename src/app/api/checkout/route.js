@@ -1,21 +1,20 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { 
-            name: 'Ghostwriter - Full Document Unlock',
-            description: 'Bypass Turnitin, Instant Download'
-          },
-          unit_amount: 499, // $4.99
+          product_data: { name: 'FreeForm Helper Premium' },
+          unit_amount: 499,
         },
         quantity: 1,
       }],
