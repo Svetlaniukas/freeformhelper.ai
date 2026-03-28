@@ -39,6 +39,8 @@ function App() {
   const [userPlan, setUserPlan] = useState('free');
   const [showPricing, setShowPricing] = useState(false);
   const [wordsUsedToday, setWordsUsedToday] = useState(0);
+  const [scoreBefore, setScoreBefore] = useState(null);
+  const [scoreAfter, setScoreAfter] = useState(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -107,29 +109,31 @@ function App() {
     setLoading(true);
     setScanning(true);
     setScanProgress(0);
+    setScoreBefore(null);
+    setScoreAfter(null);
 
-    // Scanning animation
-    const steps = [
-      'Analyzing writing patterns...',
-      'Detecting AI signatures...',
-      'Measuring perplexity & burstiness...',
-      'Rewriting for human authenticity...',
-    ];
+    // Step 1: Detect AI score BEFORE
+    setScanLabel('Scanning for AI patterns...');
     let progress = 0;
     const interval = setInterval(() => {
-      progress += Math.random() * 5 + 2;
+      progress += Math.random() * 3 + 1;
       if (progress > 95) progress = 95;
       setScanProgress(Math.floor(progress));
-      setScanLabel(steps[Math.min(Math.floor(progress / 25), 3)]);
-    }, 150);
-
-    // Wait for animation then call API
-    await new Promise(r => setTimeout(r, 2500));
-    clearInterval(interval);
-    setScanProgress(100);
-    setScanLabel('Finalizing...');
+    }, 100);
 
     try {
+      const detectRes = await fetch('/api/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input }),
+      });
+      const detectData = await detectRes.json();
+      setScoreBefore(detectData);
+      clearInterval(interval);
+      setScanProgress(50);
+      setScanLabel(`AI detected: ${detectData.score}% — Rewriting...`);
+
+      // Step 2: Humanize
       const res = await fetch('/api/humanize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,7 +143,21 @@ function App() {
 
       if (data.error === 'word_limit') {
         setShowPaywall(true);
+        setScanProgress(100);
       } else if (data.result) {
+        setScanProgress(85);
+        setScanLabel('Verifying result...');
+
+        // Step 3: Detect AI score AFTER
+        const afterRes = await fetch('/api/detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: data.result }),
+        });
+        const afterData = await afterRes.json();
+        setScoreAfter(afterData);
+        setScanProgress(100);
+
         setOutput(data.result);
         // Track usage
         const today = new Date().toISOString().slice(0, 10);
@@ -249,6 +267,31 @@ function App() {
               </button>
             )}
           </div>
+
+          {/* Score comparison bar */}
+          {scoreBefore && scoreAfter && !scanning && (
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-800 bg-slate-900/80">
+              <div className="flex-1 text-center">
+                <div className="text-[9px] text-slate-500 uppercase tracking-wider">Before</div>
+                <div className={`text-lg font-black tabular-nums ${scoreBefore.score > 60 ? 'text-red-400' : 'text-amber-400'}`}>
+                  {scoreBefore.score}% AI
+                </div>
+              </div>
+              <ArrowRight size={14} className="text-slate-600" />
+              <div className="flex-1 text-center">
+                <div className="text-[9px] text-slate-500 uppercase tracking-wider">After</div>
+                <div className={`text-lg font-black tabular-nums ${scoreAfter.score < 20 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {scoreAfter.score}% AI
+                </div>
+              </div>
+              <div className="flex-1 text-center border-l border-slate-700 pl-2">
+                <div className="text-[9px] text-slate-500 uppercase tracking-wider">Reduction</div>
+                <div className="text-lg font-black text-emerald-400 tabular-nums">
+                  -{scoreBefore.score - scoreAfter.score}%
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="relative flex-1">
             {/* Scanning overlay */}
