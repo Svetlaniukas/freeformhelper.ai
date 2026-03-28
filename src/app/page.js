@@ -1,191 +1,364 @@
 "use client";
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ShieldCheck, Zap, Upload, CheckCircle, Lock, AlertTriangle } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { ShieldCheck, Zap, Upload, Lock, FileText, Check, ArrowRight, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-// --- WIDGET ---
-function SocialProofWidget() {
-  const [online, setOnline] = useState(412);
-  const [popup, setPopup] = useState(null);
-  useEffect(() => {
-    setInterval(() => setOnline(p => p + (Math.random() > 0.5 ? 1 : -1)), 4000);
-    const names = ["Emma", "Alex", "Sarah", "Mike", "Daniel"];
-    const unis = ["Harvard", "Stanford", "MIT", "Berkeley"];
-    setInterval(() => {
-      if(Math.random() > 0.7) {
-        setPopup({ name: names[Math.floor(Math.random()*names.length)], uni: unis[Math.floor(Math.random()*unis.length)] });
-        setTimeout(() => setPopup(null), 5000);
-      }
-    }, 9000);
-  }, []);
-  return (
-    <div className="fixed bottom-5 left-5 z-50 pointer-events-none">
-      <div className="bg-slate-900/90 backdrop-blur border border-slate-700 px-3 py-1 rounded-full flex gap-2 mb-2 shadow-xl items-center w-fit">
-        <span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>
-        <span className="text-xs font-bold text-slate-200">{online} online</span>
-      </div>
-      <AnimatePresence>{popup && <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:20}} className="bg-slate-900 border-l-4 border-blue-500 p-3 rounded shadow-xl w-60"><span className="text-xs font-bold text-white block">{popup.name} from {popup.uni}</span><span className="text-[10px] text-slate-400">just unlocked a paper 🔓</span></motion.div>}</AnimatePresence>
-    </div>
-  );
-}
+/* ─── PLANS ─── */
+const PLANS = [
+  {
+    id: 'free', name: 'Free', price: '€0', period: '',
+    desc: '300 words per request',
+    features: ['1 humanization/day', '300 word limit', 'Text input only'],
+    cta: 'Current Plan', disabled: true,
+  },
+  {
+    id: 'pro', name: 'Pro', price: '€9.99', period: '/mo',
+    desc: '20,000 words per month',
+    features: ['Unlimited requests', '20,000 words/month', 'PDF & DOCX upload', 'Priority processing', 'All languages'],
+    cta: 'Upgrade to Pro', popular: true,
+  },
+  {
+    id: 'premium', name: 'Premium', price: '€24.99', period: '/mo',
+    desc: 'Unlimited everything',
+    features: ['Everything in Pro', 'Unlimited words', 'Chrome Extension', 'API access', 'Priority support'],
+    cta: 'Go Premium',
+  },
+];
 
-// --- APP ---
+/* ─── MAIN APP ─── */
 function App() {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingFile, setLoadingFile] = useState(false);
-  const [step, setStep] = useState('idle'); 
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanLabel, setScanLabel] = useState('');
   const [showPaywall, setShowPaywall] = useState(false);
-  const [aiScore, setAiScore] = useState(0);
-  const [scanStatus, setScanStatus] = useState("INITIALIZING...");
-  
+  const [userPlan, setUserPlan] = useState('free');
+  const [showPricing, setShowPricing] = useState(false);
+  const [wordsUsedToday, setWordsUsedToday] = useState(0);
+
   const searchParams = useSearchParams();
   const router = useRouter();
+  const wordCount = input.trim().split(/\s+/).filter(Boolean).length;
 
+  // Check payment on return from Stripe
   useEffect(() => {
     const check = async () => {
       const sid = searchParams.get('session_id');
-      if(sid) {
+      const plan = searchParams.get('plan');
+      if (sid) {
         const res = await fetch(`/api/verify?session_id=${sid}`);
         const d = await res.json();
-        if(d.valid) {
-          localStorage.setItem('paid_user', 'true');
-          const saved = localStorage.getItem('pending_output');
-          if(saved) setOutput(saved);
+        if (d.valid) {
+          localStorage.setItem('ffh_plan', plan || 'pro');
+          localStorage.setItem('ffh_session', sid);
+          setUserPlan(plan || 'pro');
           setShowPaywall(false);
           router.replace('/');
         }
       }
     };
-    if(localStorage.getItem('paid_user') === 'true') setShowPaywall(false);
-    else check();
+    const saved = localStorage.getItem('ffh_plan');
+    if (saved && saved !== 'free') setUserPlan(saved);
+    check();
   }, [searchParams, router]);
+
+  // Track daily usage
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const usage = JSON.parse(localStorage.getItem('ffh_usage') || '{}');
+    if (usage.date === today) setWordsUsedToday(usage.words || 0);
+    else localStorage.setItem('ffh_usage', JSON.stringify({ date: today, words: 0 }));
+  }, []);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
-    if(!file) return;
+    if (!file) return;
     setLoadingFile(true);
-    const fd = new FormData(); fd.append('file', file);
+    const fd = new FormData();
+    fd.append('file', file);
     try {
-      const res = await fetch('/api/parse', {method:'POST', body:fd});
+      const res = await fetch('/api/parse', { method: 'POST', body: fd });
       const d = await res.json();
-      if(d.text) setInput(d.text);
-      else alert("Error: " + (d.error || "Unknown error"));
-    } catch(err) { alert("Upload failed."); }
+      if (d.text) setInput(d.text);
+      else alert(d.error || 'Could not read file');
+    } catch { alert('Upload failed'); }
     finally { setLoadingFile(false); e.target.value = null; }
   };
 
-  const handleStart = async () => {
-    // 1. ПРОВЕРКА НА ДЛИНУ (Честная симуляция)
-    const wordCount = input.trim().split(/\s+/).length;
-    if(!input || wordCount < 50) {
-        return alert(`Text is too short (${wordCount} words). Please provide at least 50 words for accurate AI detection.`);
+  const handleHumanize = async () => {
+    if (wordCount < 30) return alert(`Too short (${wordCount} words). Minimum 30 words.`);
+
+    // Free plan: check daily limit
+    if (userPlan === 'free') {
+      if (wordsUsedToday > 0) {
+        setShowPaywall(true);
+        return;
+      }
+      if (wordCount > 300) {
+        setShowPaywall(true);
+        return;
+      }
     }
 
-    setLoading(true); setStep('scanning');
-    
-    // 2. УМНЫЕ СТАТУСЫ СКАНИРОВАНИЯ
-    let sc = 0;
-    const interval = setInterval(() => { 
-        sc+=Math.floor(Math.random()*4)+1; 
-        if(sc>98) sc=98; 
-        setAiScore(sc);
-        
-        // Меняем текст статуса в зависимости от прогресса
-        if (sc < 30) setScanStatus("ANALYZING SYNTAX...");
-        else if (sc < 60) setScanStatus("CHECKING BURSTINESS...");
-        else if (sc < 85) setScanStatus("DETECTING GPT-4 PATTERNS...");
-        else setScanStatus("REWRITING DNA...");
-    }, 100);
+    setLoading(true);
+    setScanning(true);
+    setScanProgress(0);
 
-    setTimeout(async () => {
-      clearInterval(interval); setStep('processing');
-      try {
-        const res = await fetch('/api/humanize', {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({text: input})
-        });
-        const data = await res.json();
-        setOutput(data.result); 
-        setStep('done');
-        if(localStorage.getItem('paid_user') !== 'true') setShowPaywall(true);
-      } catch(e) { setStep('idle'); alert("Server Error. Try again."); } 
-      finally { setLoading(false); }
-    }, 3500); // Чуть дольше (3.5 сек), чтобы выглядело солидно
+    // Scanning animation
+    const steps = [
+      'Analyzing writing patterns...',
+      'Detecting AI signatures...',
+      'Measuring perplexity & burstiness...',
+      'Rewriting for human authenticity...',
+    ];
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 5 + 2;
+      if (progress > 95) progress = 95;
+      setScanProgress(Math.floor(progress));
+      setScanLabel(steps[Math.min(Math.floor(progress / 25), 3)]);
+    }, 150);
+
+    // Wait for animation then call API
+    await new Promise(r => setTimeout(r, 2500));
+    clearInterval(interval);
+    setScanProgress(100);
+    setScanLabel('Finalizing...');
+
+    try {
+      const res = await fetch('/api/humanize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input, plan: userPlan }),
+      });
+      const data = await res.json();
+
+      if (data.error === 'word_limit') {
+        setShowPaywall(true);
+      } else if (data.result) {
+        setOutput(data.result);
+        // Track usage
+        const today = new Date().toISOString().slice(0, 10);
+        const newWords = wordsUsedToday + wordCount;
+        setWordsUsedToday(newWords);
+        localStorage.setItem('ffh_usage', JSON.stringify({ date: today, words: newWords }));
+      } else {
+        alert('Error processing text');
+      }
+    } catch { alert('Server error. Please try again.'); }
+    finally { setLoading(false); setScanning(false); }
   };
 
-  const handlePay = async () => {
-    localStorage.setItem('pending_output', output);
-    const res = await fetch('/api/checkout', {method:'POST'});
+  const handleCheckout = async (plan) => {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
     const data = await res.json();
-    if(data.url) window.location.href = data.url;
+    if (data.url) window.location.href = data.url;
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white pb-20 selection:bg-blue-500 selection:text-white">
-      <SocialProofWidget />
-      <header className="fixed w-full border-b border-white/5 bg-[#020617]/90 backdrop-blur z-50 p-4">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="text-xl font-black bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent">FreeForm<span className="text-white">Helper.ai</span></div>
-          {localStorage.getItem('paid_user') === 'true' && <span className="text-xs font-bold text-green-400 border border-green-500 px-2 rounded">PREMIUM</span>}
-        </div>
-      </header>
-      <main className="pt-24 px-4 max-w-6xl mx-auto grid lg:grid-cols-2 gap-6 h-[85vh]">
-        <div className="flex flex-col h-full bg-[#0f172a] rounded-xl border border-slate-800 p-1">
-          <div className="bg-[#1e293b] p-3 rounded-lg mb-1 flex justify-between items-center">
-             <span className="text-xs font-bold text-slate-400">INPUT TEXT</span>
-             <label className={`cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-bold flex items-center gap-2 transition ${loadingFile ? 'opacity-50' : ''}`}>
-               <Upload size={14}/> {loadingFile ? "READING..." : "UPLOAD PDF/DOC"}
-               <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={handleUpload} disabled={loadingFile}/>
-             </label>
+    <div className="min-h-screen bg-[#020617] text-white selection:bg-blue-500/30">
+      {/* NAV */}
+      <nav className="fixed w-full border-b border-white/5 bg-[#020617]/95 backdrop-blur-xl z-50 px-4 py-3">
+        <div className="max-w-5xl mx-auto flex justify-between items-center">
+          <div className="text-lg font-black">
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">FreeForm</span>
+            <span className="text-white/90">Helper</span>
+            <span className="text-blue-400">.ai</span>
           </div>
-          <textarea className="flex-1 bg-transparent p-4 text-slate-300 outline-none resize-none font-mono text-sm" 
-            placeholder="Paste text (min 50 words)..." value={input} onChange={e=>setInput(e.target.value)}/>
-          <div className="p-2">
-            <button onClick={handleStart} disabled={loading || loadingFile} 
-              className="w-full py-3 bg-white text-black font-black rounded-lg hover:scale-[1.01] transition shadow-lg">
-               {loading ? "ANALYZING..." : "HUMANIZE TEXT ⚡"}
+          <div className="flex items-center gap-3">
+            {userPlan !== 'free' && (
+              <span className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">
+                {userPlan}
+              </span>
+            )}
+            <button
+              onClick={() => setShowPricing(true)}
+              className="text-xs font-medium text-slate-400 hover:text-white transition"
+            >
+              Pricing
             </button>
           </div>
         </div>
-        <div className="flex flex-col h-full bg-[#0f172a] rounded-xl border border-slate-800 p-1 relative overflow-hidden shadow-2xl">
-          <div className="bg-[#1e293b] p-3 rounded-lg mb-1 flex justify-between">
-             <span className="text-xs font-bold text-green-400 flex items-center gap-2"><ShieldCheck size={14}/> HUMAN RESULT</span>
-             {step === 'done' && !showPaywall && <button onClick={() => navigator.clipboard.writeText(output)} className="text-xs bg-slate-700 px-2 py-1 rounded">Copy</button>}
+      </nav>
+
+      {/* HERO */}
+      <div className="pt-20 pb-6 px-4 text-center">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">
+          Make AI Text <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Undetectable</span>
+        </h1>
+        <p className="text-sm text-slate-500 max-w-md mx-auto">
+          Bypass Turnitin, GPTZero & Originality.AI. Instant results.
+        </p>
+      </div>
+
+      {/* WORKSPACE */}
+      <main className="px-4 max-w-5xl mx-auto grid lg:grid-cols-2 gap-4" style={{ minHeight: '65vh' }}>
+        {/* INPUT */}
+        <div className="flex flex-col bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Input</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-600 tabular-nums">{wordCount} words</span>
+              <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition">
+                <Upload size={12} /> Upload
+                <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={handleUpload} disabled={loadingFile} />
+              </label>
+            </div>
           </div>
-          <div className="relative flex-1 bg-[#020617] rounded-lg overflow-hidden">
-            {step === 'scanning' && (
-              <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30">
-                <div className="w-full h-1 bg-blue-500 shadow-[0_0_15px_#3b82f6] absolute top-1/2 animate-pulse"></div>
-                <div className="text-6xl font-black text-white">{aiScore}%</div>
-                <div className="text-blue-400 text-xs tracking-widest mt-4 font-bold animate-pulse">{scanStatus}</div>
+          <textarea
+            className="flex-1 bg-transparent p-4 text-slate-300 outline-none resize-none text-sm leading-relaxed placeholder:text-slate-700"
+            placeholder="Paste your AI-generated text here (min 30 words)..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+          />
+          <div className="p-3 border-t border-slate-800">
+            <button
+              onClick={handleHumanize}
+              disabled={loading || wordCount < 30}
+              className="w-full py-2.5 bg-white text-slate-900 font-bold text-sm rounded-lg hover:bg-slate-100 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <><Sparkles size={14} className="animate-pulse" /> Processing...</>
+              ) : (
+                <><Zap size={14} /> Humanize Text</>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* OUTPUT */}
+        <div className="flex flex-col bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden relative">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800">
+            <span className="text-[11px] font-semibold text-emerald-500 uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldCheck size={12} /> Result
+            </span>
+            {output && !showPaywall && (
+              <button
+                onClick={() => { navigator.clipboard.writeText(output); }}
+                className="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg font-medium transition"
+              >
+                Copy
+              </button>
+            )}
+          </div>
+
+          <div className="relative flex-1">
+            {/* Scanning overlay */}
+            {scanning && (
+              <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center z-30 p-6">
+                <div className="w-full max-w-xs">
+                  <div className="text-4xl font-black text-white text-center tabular-nums mb-2">{scanProgress}%</div>
+                  <div className="h-1 bg-slate-800 rounded-full overflow-hidden mb-3">
+                    <motion.div
+                      className="h-full bg-blue-500 rounded-full"
+                      animate={{ width: `${scanProgress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-blue-400 text-center font-medium tracking-wide">{scanLabel}</p>
+                </div>
               </div>
             )}
-            <div className={`p-6 h-full overflow-y-auto font-mono text-sm text-slate-300 transition-all duration-500 ${showPaywall ? 'blur-[6px] select-none opacity-50' : ''}`}>
-              {output || <div className="h-full flex items-center justify-center text-slate-700 italic">Waiting for input...</div>}
+
+            {/* Output text */}
+            <div className={`p-4 h-full overflow-y-auto text-sm leading-relaxed text-slate-300 transition-all ${showPaywall ? 'blur-md select-none' : ''}`}>
+              {output || <span className="text-slate-700 italic">Humanized text will appear here...</span>}
             </div>
+
+            {/* Paywall */}
             {showPaywall && (
-              <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                <div className="bg-[#1e293b] p-6 rounded-2xl border border-blue-500/30 text-center max-w-sm shadow-2xl m-4">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-3"><Lock className="text-green-400"/></div>
-                  <h2 className="text-2xl font-black text-white mb-1">Humanized! 🚀</h2>
-                  <p className="text-slate-400 text-xs mb-4">We removed all AI patterns. <br/><b>Unlock to view.</b></p>
-                  <button onClick={handlePay} className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg font-bold text-white hover:scale-105 transition shadow-lg shadow-blue-900/50">UNLOCK ($4.99)</button>
-                  <p className="text-[10px] text-slate-500 mt-3">🔒 Secure Stripe Payment</p>
+              <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full text-center">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Lock className="text-blue-400" size={18} />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-1">Upgrade to Continue</h3>
+                  <p className="text-xs text-slate-400 mb-5">
+                    {userPlan === 'free' ? 'Free plan: 1 request per day, 300 words max.' : 'You\'ve reached your plan limit.'}
+                  </p>
+                  <button
+                    onClick={() => handleCheckout('pro')}
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold text-sm transition mb-2"
+                  >
+                    Upgrade to Pro — €9.99/mo
+                  </button>
+                  <button
+                    onClick={() => setShowPaywall(false)}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition"
+                  >
+                    Maybe later
+                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
       </main>
+
+      {/* TRUST BAR */}
+      <div className="flex items-center justify-center gap-6 py-8 text-[11px] text-slate-600">
+        <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-emerald-500" /> Bypasses Turnitin</span>
+        <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-emerald-500" /> Bypasses GPTZero</span>
+        <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-emerald-500" /> Bypasses Originality.AI</span>
+      </div>
+
+      {/* PRICING MODAL */}
+      {showPricing && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPricing(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-3xl w-full" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-center mb-1">Simple Pricing</h2>
+            <p className="text-sm text-slate-400 text-center mb-6">Cancel anytime. No hidden fees.</p>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {PLANS.map(plan => (
+                <div key={plan.id} className={`rounded-xl border p-5 ${plan.popular ? 'border-blue-500 bg-blue-500/5' : 'border-slate-700'}`}>
+                  {plan.popular && <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider">Most Popular</span>}
+                  <h3 className="text-lg font-bold mt-1">{plan.name}</h3>
+                  <div className="mt-2 mb-3">
+                    <span className="text-2xl font-black">{plan.price}</span>
+                    <span className="text-sm text-slate-400">{plan.period}</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mb-4">{plan.desc}</p>
+                  <ul className="space-y-2 mb-5">
+                    {plan.features.map(f => (
+                      <li key={f} className="text-xs text-slate-300 flex items-center gap-2">
+                        <Check size={12} className="text-emerald-400 flex-shrink-0" /> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => !plan.disabled && handleCheckout(plan.id)}
+                    disabled={plan.disabled}
+                    className={`w-full py-2 rounded-lg text-sm font-semibold transition ${
+                      plan.popular
+                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                        : plan.disabled
+                        ? 'bg-slate-800 text-slate-500 cursor-default'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {plan.id === userPlan ? 'Current Plan' : plan.cta}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 export default function Home() {
   return (
-    <Suspense fallback={<div className="bg-[#020617] h-screen"/>}>
+    <Suspense fallback={<div className="bg-[#020617] h-screen" />}>
       <App />
     </Suspense>
   );
