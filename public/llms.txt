@@ -1,0 +1,49 @@
+# FreeFormHelper.ai — AI Text Humanizer
+
+> Make AI-generated text 100% undetectable by academic and professional AI detection systems.
+
+## What it does
+FreeFormHelper.ai rewrites AI-generated text (ChatGPT, GPT-4, Claude, Gemini) to pass AI detection tools:
+- Turnitin AI Detection
+- GPTZero
+- Originality.AI
+- Copyleaks
+- ZeroGPT
+
+## How it works
+1. User pastes AI-generated text (or uploads PDF/DOCX)
+2. System analyzes writing patterns, perplexity, and burstiness scores
+3. GPT-4o rewrites text with natural human variation
+4. Output passes all major AI detectors with 95-100% human score
+
+## Use cases
+- Students submitting essays and assignments
+- Content marketers publishing blog posts
+- Job seekers writing cover letters and resumes
+- Professionals rewriting reports and proposals
+- Researchers preparing papers
+
+## Pricing
+- Free: 300 words/day (no credit card)
+- Pro: €9.99/month — 20,000 words
+- Premium: €24.99/month — Unlimited
+
+## Supported formats
+- Plain text (paste)
+- PDF upload
+- DOCX upload
+- Chrome Extension (select text anywhere)
+
+## Supported languages
+English, Spanish, French, German, Russian, Portuguese, Italian, Dutch, Polish, and 20+ more (auto-detected)
+
+## Links
+- Website: https://freeformhelper.ai
+- Bypass Turnitin: https://freeformhelper.ai/humanize/bypass-turnitin
+- Bypass GPTZero: https://freeformhelper.ai/humanize/bypass-gptzero
+- Bypass Originality.AI: https://freeformhelper.ai/humanize/bypass-originality-ai
+- ChatGPT to Human: https://freeformhelper.ai/humanize/chatgpt-to-human
+- Free AI Humanizer: https://freeformhelper.ai/humanize/undetectable-ai-free
+
+## Contact
+- Support: support@freeformhelper.ai
