@@ -41,6 +41,7 @@ function App() {
   const [wordsUsedToday, setWordsUsedToday] = useState(0);
   const [scoreBefore, setScoreBefore] = useState(null);
   const [scoreAfter, setScoreAfter] = useState(null);
+  const [profile, setProfile] = useState({ age: 22, subject: 'general', level: 'college' });
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -137,7 +138,7 @@ function App() {
       const res = await fetch('/api/humanize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: input, plan: userPlan }),
+        body: JSON.stringify({ text: input, plan: userPlan, profile }),
       });
       const data = await res.json();
 
@@ -230,6 +231,43 @@ function App() {
                 <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={handleUpload} disabled={loadingFile} />
               </label>
             </div>
+          </div>
+          {/* Writer Profile — "Write Like ME" */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800/50 bg-slate-900/30">
+            <span className="text-[10px] text-slate-600 font-medium whitespace-nowrap">Write as:</span>
+            <select
+              value={profile.age}
+              onChange={e => setProfile(p => ({ ...p, age: Number(e.target.value) }))}
+              className="bg-slate-800 text-slate-300 text-[11px] rounded-md px-2 py-1 border border-slate-700 outline-none"
+            >
+              <option value={18}>18 y/o</option>
+              <option value={20}>20 y/o</option>
+              <option value={22}>22 y/o</option>
+              <option value={25}>25 y/o</option>
+              <option value={30}>30+ y/o</option>
+            </select>
+            <select
+              value={profile.subject}
+              onChange={e => setProfile(p => ({ ...p, subject: e.target.value }))}
+              className="bg-slate-800 text-slate-300 text-[11px] rounded-md px-2 py-1 border border-slate-700 outline-none"
+            >
+              <option value="general">General</option>
+              <option value="nursing">Nursing</option>
+              <option value="law">Law</option>
+              <option value="history">History</option>
+              <option value="science">Science</option>
+              <option value="business">Business</option>
+            </select>
+            <select
+              value={profile.level}
+              onChange={e => setProfile(p => ({ ...p, level: e.target.value }))}
+              className="bg-slate-800 text-slate-300 text-[11px] rounded-md px-2 py-1 border border-slate-700 outline-none"
+            >
+              <option value="school">High School</option>
+              <option value="college">College</option>
+              <option value="masters">Masters</option>
+              <option value="phd">PhD</option>
+            </select>
           </div>
           <textarea
             className="flex-1 bg-transparent p-4 text-slate-300 outline-none resize-none text-sm leading-relaxed placeholder:text-slate-700"
